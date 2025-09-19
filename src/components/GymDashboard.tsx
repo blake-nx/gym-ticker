@@ -6,36 +6,8 @@ import {
   getPokemonSprite,
   handlePokemonImageError,
 } from "@/utils/pokemonIcons";
-
-type Defender = {
-  pokemon_id?: number;
-  form?: number;
-  costume?: number;
-  gender?: number;
-  shiny?: boolean;
-  [key: string]: unknown;
-};
-
-type Gym = {
-  id: string;
-  name: string;
-  lat: number;
-  lon: number;
-  url: string;
-  description: string | null;
-  slots: number | null;
-  guarding_pokemon_id: number | null;
-  updated: number;
-  defenders: Defender[];
-  total_cp: number | null;
-};
-
-type GymApiResult = {
-  mystic: Gym[];
-  valor: Gym[];
-  instinct: Gym[];
-  counts: { mystic: number; valor: number; instinct: number };
-};
+import type { Gym, GymApiResult } from "@/server/gymData";
+import { resolveGymImage } from "@/utils/gymImages";
 
 interface GymDashboardProps {
   initialGyms: GymApiResult;
@@ -138,9 +110,6 @@ export default function GymDashboard({
     return () => clearInterval(interval);
   }, [getGymsAction, mounted]);
 
-  // Helper for gym images
-  const gymImage = (url: string) => url || "/images/gym-placeholder.png";
-
   const renderGyms = (teamGyms: Gym[], color: string) => (
     <div className="w-full mt-4 flex flex-col gap-3 max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
       {teamGyms.length === 0 ? (
@@ -155,7 +124,7 @@ export default function GymDashboard({
           >
             <div className="relative">
               <Image
-                src={gymImage(gym.url)}
+                src={resolveGymImage(gym.url)}
                 alt={gym.name || "Gym"}
                 width={56}
                 height={56}
