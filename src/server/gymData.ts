@@ -515,7 +515,6 @@ export async function fetchGymHistory(period: string): Promise<GymHistoryRespons
   }
 }
 
-
 export async function fetchDefenderStats(): Promise<StatsData> {
   let geofenceId: string;
   let geofenceDbName: string;
@@ -554,18 +553,23 @@ export async function fetchDefenderStats(): Promise<StatsData> {
       3: { defenders: new Map(), totalDefenders: 0, totalCp: 0 },
     };
 
-
-    for (const row of rows as Array<{ team_id: number; defenders: string }>) {
+    for (const row of rows as Array<{ team_id: number; defenders: string | null }>) {
       if (!row.defenders) continue;
 
-      let defenders: Defender[] = [];
+      let parsedDefenders: unknown;
       try {
-        defenders = JSON.parse(row.defenders);
+        parsedDefenders = JSON.parse(row.defenders);
       } catch (error) {
         console.warn("Failed to parse defenders JSON:", error);
         continue;
       }
 
+      if (!Array.isArray(parsedDefenders)) {
+        console.warn("Unexpected defenders payload shape", parsedDefenders);
+        continue;
+      }
+
+      const defenders = parsedDefenders as Defender[];
       const team = teamStats[row.team_id];
       if (!team) continue;
 
@@ -600,6 +604,7 @@ export async function fetchDefenderStats(): Promise<StatsData> {
 
     const aggregated = aggregateTeamStats(teamStats);
     const strongest = [...aggregated].sort((a, b) => b.avg_cp - a.avg_cp).slice(0, 10);
+    
     const teams: TeamStats[] = [1, 2, 3].map((teamId) => {
       const team = teamStats[teamId];
       const defenders = Array.from(team.defenders.values()).sort(

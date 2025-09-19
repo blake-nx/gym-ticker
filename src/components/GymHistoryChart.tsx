@@ -411,11 +411,10 @@ export default function GymHistoryChart() {
               stroke="#1f2937"
               rx={8}
             />
-
-            {yTicks.map((tick) => {
+            {yTicks.map((tick, index) => {
               const y = chartScales.yScale(tick);
               return (
-                <g key={`y-${tick}`}>
+                <g key={`y-${tick}-${index}`}>
                   <line
                     x1={PADDING.left}
                     y1={y}

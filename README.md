@@ -17,7 +17,7 @@ A drop-in Next.js dashboard for tracking live Pokémon GO gym ownership, histori
 - **Most Contested Gyms** – Highlights gyms that flip teams most often with recent transition visuals.
 - **Visual Team Changes** – Shows the last five team transitions per contested gym.
 - **Automated Cleanup** – Keeps only the last seven days of history by default to prevent database bloat.
-
+- **Defender Statistics** – Aggregates defender usage and surfaces the strongest defenders across all teams.
 
 ## Environment Variables
 
@@ -44,6 +44,49 @@ The `scripts/gym_history_schema.sql` file is idempotent and safe to rerun. It cr
 
 ```bash
 mysql -h $DB_HOST -u $DB_USER -p$DB_PASS $DB_NAME < scripts/gym_history_schema.sql
+
+## History Collector
+
+The `scripts/collectGymHistory.js` script captures gym snapshots, records team changes, and purges expired history. It runs within a MySQL transaction so partial updates roll back on failure.
+
+```bash
+# Manual run
+node scripts/collectGymHistory.js
+
+# PM2 every five minutes
+pm2 start scripts/collectGymHistory.js --name gym-history --cron "*/5 * * * *"
+
+# Cron alternative (crontab -e)
+*/5 * * * * /usr/bin/node /path/to/repo/scripts/collectGymHistory.js >> /var/log/gym-history.log 2>&1
+```
+
+The collector honours `GYM_HISTORY_RETENTION_DAYS`, sanitises database identifiers, and logs success/failure messages.
+
+## API Endpoints
+
+- `GET /api/gyms` – Returns the current gym snapshot. When `INTERNAL_API_SECRET` is set, obtain a one-time token with `POST /api/gyms` and pass it via `x-access-token`.
+- `GET /api/gym-history?period=24h` – Provides chart data, contested gyms, and current counts for one of `6h`, `12h`, `24h`, `48h`, or `7d`.
+- `GET /api/defender-stats` – Aggregated defender statistics per team and overall.
+
+These endpoints power the live dashboard and can be reused for external integrations.
+
+## Performance Notes
+
+- Snapshot collection and team-change tracking run inside a transaction for data integrity.
+- Historical data is aggregated by 5/15/60-minute buckets to keep responses compact.
+- Timestamp indexes are applied to the history tables to ensure fast range queries.
+- The contested gyms panel limits results (top 20) to maintain frontend responsiveness.
+
+## Running Locally
+
+```bash
+npm install
+npm run dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000). Update `NEXT_PUBLIC_APP_URL` if you proxy through a different host.
+
+=======
 ```
 
 ## History Collector
