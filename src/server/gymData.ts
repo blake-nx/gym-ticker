@@ -515,6 +515,7 @@ export async function fetchGymHistory(period: string): Promise<GymHistoryRespons
   }
 }
 
+
 export async function fetchDefenderStats(): Promise<StatsData> {
   let geofenceId: string;
   let geofenceDbName: string;
@@ -552,6 +553,7 @@ export async function fetchDefenderStats(): Promise<StatsData> {
       2: { defenders: new Map(), totalDefenders: 0, totalCp: 0 },
       3: { defenders: new Map(), totalDefenders: 0, totalCp: 0 },
     };
+
 
     for (const row of rows as Array<{ team_id: number; defenders: string }>) {
       if (!row.defenders) continue;
@@ -598,7 +600,6 @@ export async function fetchDefenderStats(): Promise<StatsData> {
 
     const aggregated = aggregateTeamStats(teamStats);
     const strongest = [...aggregated].sort((a, b) => b.avg_cp - a.avg_cp).slice(0, 10);
-
     const teams: TeamStats[] = [1, 2, 3].map((teamId) => {
       const team = teamStats[teamId];
       const defenders = Array.from(team.defenders.values()).sort(
