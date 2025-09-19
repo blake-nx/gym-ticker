@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gym Ticker
 
-## Getting Started
+A drop-in Next.js dashboard for tracking live Pokémon GO gym ownership, historical control trends, and defender statistics for a configured geofence. The project includes the database schema, data collection script, and UI needed to deploy gym history tracking end to end.
 
-First, run the development server:
+## Quick Start
+
+1. **Apply the schema** – Run the bundled SQL script against your RocketMap/Monocle database: `mysql -h $DB_HOST -u $DB_USER -p$DB_PASS $DB_NAME < scripts/gym_history_schema.sql`.
+2. **Configure environment variables** – Populate `.env.local` (or `.env`) with the values below. The collector loads the same files automatically, so no extra exports are required for PM2/cron runs.
+3. **Install dependencies** – `npm install`.
+4. **Start the history collector** – `pm2 start scripts/collectGymHistory.js --name gym-history --cron "*/5 * * * *"` or run the script with cron/systemd.
+5. **Launch the dashboard** – `npm run dev` for development or `npm run build && npm run start` in production.
+
+## Features
+
+- **Historical Tracking** – Stores gym ownership snapshots every collector run and aggregates data for 6h/12h/24h/48h/7d views.
+- **Live Chart** – Realtime area/line charts with hover details that auto-refresh every 30 seconds.
+- **Most Contested Gyms** – Highlights gyms that flip teams most often with recent transition visuals.
+- **Visual Team Changes** – Shows the last five team transitions per contested gym.
+- **Automated Cleanup** – Keeps only the last seven days of history by default to prevent database bloat.
+- **Defender Statistics** – Aggregates defender usage and surfaces the strongest defenders across all teams.
+
+## Environment Variables
+
+Create a `.env.local` file for Next.js (or `.env` in production). The collector reads the same files on startup, so the values only need to live in one place. Defaults are shown where applicable.
+
+| Variable | Required | Default | Purpose |
+| --- | :---: | --- | --- |
+| `DB_HOST` | ✅ | – | MySQL host for the RocketMap/Monocle database. |
+| `DB_PORT` | ✅ | `3306` | MySQL port. |
+| `DB_USER` | ✅ | – | Database user with read/write access to `DB_NAME`. |
+| `DB_PASS` | ✅ | – | Password for `DB_USER`. |
+| `DB_NAME` | ✅ | – | Main database containing the `gym` table. |
+| `GEOFENCE_DB_NAME` | ✅ | – | Database storing geofences with `geometry` data. |
+| `GEOFENCE_ID` | ✅ | – | Geofence ID that bounds the gyms being tracked. |
+| `GYM_HISTORY_RETENTION_DAYS` | ❌ | `7` | Number of days of history to retain before cleanup. |
+| `DB_POOL_SIZE` | ❌ | `10` | Maximum concurrent MySQL connections for the collector. |
+| `GYM_TIME_WINDOW` | ❌ | `3600` | Seconds of defender/gym data surfaced via the API. |
+| `INTERNAL_API_SECRET` | ❌ | – | Enables token-based access to `GET /api/gyms` for server actions. |
+| `NEXT_PUBLIC_APP_URL` | ❌ | `http://localhost:3000` | Base URL used for server-side fetches in production. |
+
+## Database Schema
+
+The `scripts/gym_history_schema.sql` file is idempotent and safe to rerun. It creates the `gym_history` and `gym_team_changes` tables plus the `contested_gyms_24h` view leveraged by the dashboard. Apply it to the database referenced by `DB_NAME`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+mysql -h $DB_HOST -u $DB_USER -p$DB_PASS $DB_NAME < scripts/gym_history_schema.sql
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## History Collector
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The `scripts/collectGymHistory.js` script captures gym snapshots, records team changes, and purges expired history. It runs within a MySQL transaction so partial updates roll back on failure.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Manual run
+node scripts/collectGymHistory.js
 
-## Learn More
+# PM2 every five minutes
+pm2 start scripts/collectGymHistory.js --name gym-history --cron "*/5 * * * *"
 
-To learn more about Next.js, take a look at the following resources:
+# Cron alternative (crontab -e)
+*/5 * * * * /usr/bin/node /path/to/repo/scripts/collectGymHistory.js >> /var/log/gym-history.log 2>&1
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The collector honours `GYM_HISTORY_RETENTION_DAYS`, sanitises database identifiers, and logs success/failure messages. It automatically loads configuration from `.env`, `.env.local`, and their environment-specific variants before establishing a database connection, matching how Next.js resolves environment variables.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API Endpoints
 
-## Deploy on Vercel
+- `GET /api/gyms` – Returns the current gym snapshot. When `INTERNAL_API_SECRET` is set, obtain a one-time token with `POST /api/gyms` and pass it via `x-access-token`.
+- `GET /api/gym-history?period=24h` – Provides chart data, contested gyms, and current counts for one of `6h`, `12h`, `24h`, `48h`, or `7d`.
+- `GET /api/defender-stats` – Aggregated defender statistics per team and overall.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+These endpoints power the live dashboard and can be reused for external integrations.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Performance Notes
+
+- Snapshot collection and team-change tracking run inside a transaction for data integrity.
+- Historical data is aggregated by 5/15/60-minute buckets to keep responses compact.
+- Timestamp indexes are applied to the history tables to ensure fast range queries.
+- The contested gyms panel limits results (top 20) to maintain frontend responsiveness.
+
+## Running Locally
+
+```bash
+npm install
+npm run dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000). Update `NEXT_PUBLIC_APP_URL` if you proxy through a different host.
+
+## Deployment
+
+```bash
+npm run build
+npm run start
+```
+
+Ensure the environment variables above are present and that the history collector is scheduled (PM2, cron, or another supervisor).
