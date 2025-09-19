@@ -1,3 +1,5 @@
+import { DEFAULT_GYM_IMAGE } from "./gymImages";
+
 /**
  * Generates Pokemon sprite URL using wwm-uicons format
  */
@@ -47,8 +49,13 @@ export const handlePokemonImageError = (
 
   // If wwm-uicons failed, try PogoAssets
   if (currentSrc.includes("WatWowMap/wwm-uicons")) {
-    img.src =
-      "https://raw.githubusercontent.com/WatWowMap/wwm-uicons/main/pokemon/0.png";
+    img.src = getPogoAssetsIconUrl(pokemonId, form);
+    return;
+  }
+
+  // Final fallback to placeholder
+  if (!currentSrc.includes("PogoAssets")) {
+    img.src = DEFAULT_GYM_IMAGE;
   }
 };
 
