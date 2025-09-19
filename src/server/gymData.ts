@@ -82,11 +82,6 @@ export interface DefenderStats {
   total_cp: number;
   avg_cp: number;
   name?: string;
-  total_times_fed?: number;
-  avg_times_fed?: number;
-  max_times_fed?: number;
-  gym_name?: string;
-  team_id?: number;
 }
 
 export interface TeamStats {
@@ -103,8 +98,6 @@ export interface StatsData {
   teams: TeamStats[];
   overall: {
     total_defenders_all_teams: number;
-    most_popular_overall: DefenderStats[];
-    most_fed_overall: DefenderStats[];
     strongest_defenders: DefenderStats[];
     timestamp: string;
   };
@@ -152,15 +145,6 @@ interface ChangeRow {
   changed_at: number;
 }
 
-interface MostFedRow {
-  gym_name: string;
-  team_id: string;
-  pokemon_id: string;
-  form: string | null;
-  times_fed: string;
-  cp: string;
-}
-
 interface TeamAggregation {
   defenders: Map<string, DefenderStats>;
   totalDefenders: number;
@@ -193,8 +177,6 @@ const DEFAULT_STATS: StatsData = {
   teams: [],
   overall: {
     total_defenders_all_teams: 0,
-    most_popular_overall: [],
-    most_fed_overall: [],
     strongest_defenders: [],
     timestamp: new Date().toISOString(),
   },
@@ -274,12 +256,6 @@ function aggregateTeamStats(teamStats: Record<number, TeamAggregation>) {
         existing.count += defender.count;
         existing.total_cp += defender.total_cp;
         existing.avg_cp = Math.round(existing.total_cp / Math.max(existing.count, 1));
-        existing.total_times_fed =
-          (existing.total_times_fed || 0) + (defender.total_times_fed || 0);
-        existing.max_times_fed = Math.max(
-          existing.max_times_fed || 0,
-          defender.max_times_fed || 0,
-        );
       } else {
         allDefenders.set(key, { ...defender });
       }
@@ -539,64 +515,6 @@ export async function fetchGymHistory(period: string): Promise<GymHistoryRespons
   }
 }
 
-async function getMostFedDefenders(
-  dbName: string,
-  geofenceDbName: string,
-  geofenceId: string,
-): Promise<DefenderStats[]> {
-  try {
-    const [rows] = await pool.execute(
-      `
-      SELECT
-        g.name as gym_name,
-        g.team_id,
-        JSON_UNQUOTE(JSON_EXTRACT(defender.value, '$.pokemon_id')) as pokemon_id,
-        JSON_UNQUOTE(JSON_EXTRACT(defender.value, '$.form')) as form,
-        JSON_UNQUOTE(JSON_EXTRACT(defender.value, '$.times_fed')) as times_fed,
-        JSON_UNQUOTE(JSON_EXTRACT(defender.value, '$.cp_when_deployed')) as cp
-      FROM ${dbName}.gym g
-      CROSS JOIN JSON_TABLE(
-        g.defenders,
-        '$[*]' COLUMNS ( value JSON PATH '$' )
-      ) AS defender
-      WHERE g.enabled = 1
-        AND g.team_id IN (1, 2, 3)
-        AND JSON_EXTRACT(defender.value, '$.times_fed') IS NOT NULL
-        AND JSON_EXTRACT(defender.value, '$.times_fed') > 0
-        AND ST_CONTAINS(
-          ST_GeomFromGeoJSON(
-            (SELECT geometry FROM ${geofenceDbName}.geofence WHERE id = ?), 2, 0
-          ),
-          POINT(g.lon, g.lat)
-        )
-      ORDER BY CAST(JSON_EXTRACT(defender.value, '$.times_fed') AS UNSIGNED) DESC
-      LIMIT 10
-      `,
-      [geofenceId],
-    );
-
-    return (rows as MostFedRow[]).map((row) => {
-      const pokemonId = parseInt(row.pokemon_id, 10);
-
-      return {
-        pokemon_id: pokemonId,
-        form: row.form ? parseInt(row.form, 10) : undefined,
-        count: 1,
-        total_cp: parseInt(row.cp, 10) || 0,
-        avg_cp: parseInt(row.cp, 10) || 0,
-        name: getPokemonName(pokemonId),
-        total_times_fed: parseInt(row.times_fed, 10) || 0,
-        avg_times_fed: parseInt(row.times_fed, 10) || 0,
-        max_times_fed: parseInt(row.times_fed, 10) || 0,
-        gym_name: row.gym_name,
-        team_id: parseInt(row.team_id, 10) || 0,
-      } satisfies DefenderStats;
-    });
-  } catch (error) {
-    console.error("Error getting most fed defenders:", error);
-    return [];
-  }
-}
 
 export async function fetchDefenderStats(): Promise<StatsData> {
   let geofenceId: string;
@@ -636,7 +554,6 @@ export async function fetchDefenderStats(): Promise<StatsData> {
       3: { defenders: new Map(), totalDefenders: 0, totalCp: 0 },
     };
 
-    const mostFed = await getMostFedDefenders(dbName, geofenceDbName, geofenceId);
 
     for (const row of rows as Array<{ team_id: number; defenders: string }>) {
       if (!row.defenders) continue;
@@ -660,18 +577,11 @@ export async function fetchDefenderStats(): Promise<StatsData> {
         }`;
         const existing = team.defenders.get(key);
         const cp = toNumber(defender.cp_when_deployed);
-        const timesFed = toNumber(defender.times_fed);
 
         if (existing) {
           existing.count += 1;
           existing.total_cp += cp;
           existing.avg_cp = Math.round(existing.total_cp / Math.max(existing.count, 1));
-          existing.total_times_fed =
-            (existing.total_times_fed || 0) + timesFed;
-          existing.max_times_fed = Math.max(
-            existing.max_times_fed || 0,
-            timesFed,
-          );
         } else {
           team.defenders.set(key, {
             pokemon_id: defender.pokemon_id,
@@ -679,9 +589,6 @@ export async function fetchDefenderStats(): Promise<StatsData> {
             count: 1,
             total_cp: cp,
             avg_cp: cp,
-            total_times_fed: timesFed,
-            avg_times_fed: timesFed,
-            max_times_fed: timesFed,
             name: getPokemonName(defender.pokemon_id),
           });
         }
@@ -691,10 +598,8 @@ export async function fetchDefenderStats(): Promise<StatsData> {
       }
     }
 
-    const overall = aggregateTeamStats(teamStats);
-    const strongest = [...overall].sort((a, b) => b.avg_cp - a.avg_cp).slice(0, 10);
-    const mostPopular = overall.slice(0, 10);
-
+    const aggregated = aggregateTeamStats(teamStats);
+    const strongest = [...aggregated].sort((a, b) => b.avg_cp - a.avg_cp).slice(0, 10);
     const teams: TeamStats[] = [1, 2, 3].map((teamId) => {
       const team = teamStats[teamId];
       const defenders = Array.from(team.defenders.values()).sort(
@@ -721,8 +626,6 @@ export async function fetchDefenderStats(): Promise<StatsData> {
           (sum, team) => sum + team.total_defenders,
           0,
         ),
-        most_popular_overall: mostPopular,
-        most_fed_overall: mostFed,
         strongest_defenders: strongest,
         timestamp: new Date().toISOString(),
       },

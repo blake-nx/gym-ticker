@@ -17,7 +17,7 @@ A drop-in Next.js dashboard for tracking live Pokémon GO gym ownership, histori
 - **Most Contested Gyms** – Highlights gyms that flip teams most often with recent transition visuals.
 - **Visual Team Changes** – Shows the last five team transitions per contested gym.
 - **Automated Cleanup** – Keeps only the last seven days of history by default to prevent database bloat.
-- **Defender Statistics** – Aggregates defender usage, motivation, and feeding activity across all teams.
+
 
 ## Environment Variables
 
