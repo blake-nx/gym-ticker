@@ -411,7 +411,6 @@ export default function GymHistoryChart() {
               stroke="#1f2937"
               rx={8}
             />
-
             {yTicks.map((tick, index) => {
               const y = chartScales.yScale(tick);
               return (
