@@ -1,6 +1,79 @@
 #!/usr/bin/env node
 
+const fs = require("fs");
+const path = require("path");
 const mysql = require("mysql2/promise");
+
+function setEnvValue(key, value, { override }) {
+  if (!override && process.env[key] !== undefined) {
+    return;
+  }
+  process.env[key] = value;
+}
+
+function parseValue(raw) {
+  let value = raw.trim();
+
+  const isDoubleQuoted = value.startsWith("\"") && value.endsWith("\"");
+  const isSingleQuoted = value.startsWith("'") && value.endsWith("'");
+
+  if (isDoubleQuoted || isSingleQuoted) {
+    value = value.slice(1, -1);
+  } else {
+    const commentIndex = value.indexOf("#");
+    if (commentIndex !== -1) {
+      value = value.slice(0, commentIndex).trim();
+    }
+  }
+
+  return value.replace(/\\n/g, "\n").replace(/\\r/g, "\r");
+}
+
+function loadEnvFile(filePath, { override }) {
+  const contents = fs.readFileSync(filePath, "utf8");
+  const lines = contents.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const match = trimmed.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_\.]*)\s*=\s*(.*)$/);
+    if (!match) {
+      continue;
+    }
+
+    const [, key, rawValue] = match;
+    const value = parseValue(rawValue);
+    setEnvValue(key, value, { override });
+  }
+}
+
+function loadEnv() {
+  const cwd = process.cwd();
+  const mode = process.env.NODE_ENV || "development";
+
+  const baseFiles = [`.env`, `.env.${mode}`];
+  const overrideFiles = [`.env.local`, `.env.${mode}.local`];
+
+  for (const file of baseFiles) {
+    const filePath = path.join(cwd, file);
+    if (fs.existsSync(filePath)) {
+      loadEnvFile(filePath, { override: false });
+    }
+  }
+
+  for (const file of overrideFiles) {
+    const filePath = path.join(cwd, file);
+    if (fs.existsSync(filePath)) {
+      loadEnvFile(filePath, { override: true });
+    }
+  }
+}
+
+loadEnv();
+
 
 function ensure(value, name) {
   if (!value) {
