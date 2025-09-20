@@ -14,7 +14,7 @@ interface GymDashboardProps {
   getGymsAction: () => Promise<GymApiResult>;
 }
 
-export default function GymDashboard({
+export default function GymTicker({
   initialGyms,
   getGymsAction,
 }: GymDashboardProps) {
