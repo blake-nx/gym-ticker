@@ -1,8 +1,10 @@
 # Gym Ticker
 
 Gym Ticker is a Pogo gym control tracker. It combines a MySQL schema, a Node.js history collector, and a real-time dashboard so you can display a ticker of gyms by team within a chosen geofence.
+<img width="1023" height="431" alt="2025-09-20_18h08_57" src="https://github.com/user-attachments/assets/aad01ed0-39f1-49e5-a238-8f2d3af77823" />
 
 ## Features
+
 
 - **Live ticker** – See which team currently owns each gym along with defender previews and slot availability.
 - **History charts** – Track long-term Mystic, Valor, and Instinct control across multiple time windows.
