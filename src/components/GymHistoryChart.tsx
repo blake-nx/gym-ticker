@@ -255,6 +255,7 @@ export default function GymHistoryChart() {
 
   const chartScales = useChartScales(chartData, data?.currentCounts.total);
 
+
   const yTicks = useMemo(() => {
     const ticks = 4;
     const values = [] as number[];
