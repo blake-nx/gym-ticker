@@ -151,11 +151,7 @@ function teamName(teamId: number) {
   }
 }
 
-function TeamIconBadge({
-  teamId,
-}: {
-  teamId?: number | null;
-}) {
+function TeamIconBadge({ teamId }: { teamId?: number | null }) {
   const resolvedTeamId = teamId ?? 0;
   const icon = getTeamIcon(resolvedTeamId);
   const label = teamName(resolvedTeamId);
@@ -163,7 +159,7 @@ function TeamIconBadge({
   if (icon) {
     return (
       <div
-        className="w-6 h-6 rounded-full bg-gray-900/70 border border-gray-700 flex items-center justify-center"
+        className="w-6 h-6 rounded-full bg-gray-900 flex items-center justify-center"
         title={label}
       >
         <Image
@@ -171,7 +167,7 @@ function TeamIconBadge({
           alt={icon.alt}
           width={24}
           height={24}
-          className="w-5 h-5 object-contain"
+          className="w-5 h-5 object-contain "
         />
       </div>
     );
@@ -191,7 +187,7 @@ function createLinePath(
   data: ChartDataPoint[],
   getValue: (point: ChartDataPoint) => number,
   xScale: (time: number) => number,
-  yScale: (value: number) => number,
+  yScale: (value: number) => number
 ) {
   if (data.length === 0) return "";
 
@@ -208,7 +204,7 @@ function createAreaPath(
   getBase: (point: ChartDataPoint) => number,
   getTop: (point: ChartDataPoint) => number,
   xScale: (time: number) => number,
-  yScale: (value: number) => number,
+  yScale: (value: number) => number
 ) {
   if (data.length === 0) return "";
 
@@ -245,7 +241,8 @@ function useChartScales(data: ChartDataPoint[], totalGyms?: number) {
     const timeRange = Math.max(maxTime - minTime, 1);
 
     const maxTotalValue = Math.max(...data.map((point) => point.total), 0);
-    const desiredMaxValue = totalGyms && totalGyms > 0 ? totalGyms : maxTotalValue;
+    const desiredMaxValue =
+      totalGyms && totalGyms > 0 ? totalGyms : maxTotalValue;
 
     const maxValue = Math.max(desiredMaxValue, 1);
 
@@ -309,7 +306,7 @@ export default function GymHistoryChart() {
     return data.chartData.map((point) => {
       const uncontrolled = Math.max(
         point.total - point.mystic - point.valor - point.instinct,
-        0,
+        0
       );
 
       return { ...point, uncontrolled };
@@ -317,7 +314,6 @@ export default function GymHistoryChart() {
   }, [data]);
 
   const chartScales = useChartScales(chartData, data?.currentCounts.total);
-
 
   const yTicks = useMemo(() => {
     const ticks = 4;
@@ -333,8 +329,9 @@ export default function GymHistoryChart() {
     const ticks = Math.min(5, chartData.length);
     const { minTime, maxTime } = chartScales;
     const range = Math.max(maxTime - minTime, 1);
-    return Array.from({ length: ticks }, (_, index) =>
-      minTime + (range * index) / Math.max(ticks - 1, 1),
+    return Array.from(
+      { length: ticks },
+      (_, index) => minTime + (range * index) / Math.max(ticks - 1, 1)
     );
   }, [chartData, chartScales]);
 
@@ -348,7 +345,7 @@ export default function GymHistoryChart() {
       const relativeX = ((event.clientX - rect.left) / rect.width) * SVG_WIDTH;
       const clampedX = Math.min(
         Math.max(relativeX - PADDING.left, 0),
-        CHART_WIDTH,
+        CHART_WIDTH
       );
 
       const { minTime, maxTime } = chartScales;
@@ -367,7 +364,7 @@ export default function GymHistoryChart() {
 
       setHoverIndex(closestIndex);
     },
-    [chartData, chartScales],
+    [chartData, chartScales]
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -393,19 +390,16 @@ export default function GymHistoryChart() {
     return null;
   }
 
-  const hoveredPoint =
-    hoverIndex !== null ? chartData[hoverIndex] : undefined;
+  const hoveredPoint = hoverIndex !== null ? chartData[hoverIndex] : undefined;
   const hoverX =
-    hoveredPoint !== undefined
-      ? chartScales.xScale(hoveredPoint.time)
-      : null;
+    hoveredPoint !== undefined ? chartScales.xScale(hoveredPoint.time) : null;
 
   const currentUncontrolled = Math.max(
     data.currentCounts.total -
       data.currentCounts.mystic -
       data.currentCounts.valor -
       data.currentCounts.instinct,
-    0,
+    0
   );
 
   const summaryCards = [
@@ -471,7 +465,9 @@ export default function GymHistoryChart() {
                 key={item.label}
                 className={`${teamClasses.background} ${teamClasses.border} border rounded-lg p-3`}
               >
-                <div className={`${teamClasses.text} text-sm`}>{item.label}</div>
+                <div className={`${teamClasses.text} text-sm`}>
+                  {item.label}
+                </div>
                 <div className="text-2xl font-bold text-white">
                   {item.value}
                 </div>
@@ -547,7 +543,7 @@ export default function GymHistoryChart() {
                     () => 0,
                     (point) => point.mystic,
                     chartScales.xScale,
-                    chartScales.yScale,
+                    chartScales.yScale
                   )}
                   fill="rgba(59, 130, 246, 0.45)"
                   stroke="none"
@@ -558,7 +554,7 @@ export default function GymHistoryChart() {
                     (point) => point.mystic,
                     (point) => point.mystic + point.valor,
                     chartScales.xScale,
-                    chartScales.yScale,
+                    chartScales.yScale
                   )}
                   fill="rgba(239, 68, 68, 0.45)"
                   stroke="none"
@@ -569,7 +565,7 @@ export default function GymHistoryChart() {
                     (point) => point.mystic + point.valor,
                     (point) => point.mystic + point.valor + point.instinct,
                     chartScales.xScale,
-                    chartScales.yScale,
+                    chartScales.yScale
                   )}
                   fill="rgba(245, 158, 11, 0.45)"
                   stroke="none"
@@ -577,15 +573,14 @@ export default function GymHistoryChart() {
                 <path
                   d={createAreaPath(
                     chartData,
-                    (point) =>
-                      point.mystic + point.valor + point.instinct,
+                    (point) => point.mystic + point.valor + point.instinct,
                     (point) =>
                       point.mystic +
                       point.valor +
                       point.instinct +
                       point.uncontrolled,
                     chartScales.xScale,
-                    chartScales.yScale,
+                    chartScales.yScale
                   )}
                   fill="rgba(156, 163, 175, 0.45)"
                   stroke="none"
@@ -598,7 +593,7 @@ export default function GymHistoryChart() {
                     chartData,
                     (point) => point.mystic,
                     chartScales.xScale,
-                    chartScales.yScale,
+                    chartScales.yScale
                   )}
                   fill="none"
                   stroke="#3B82F6"
@@ -609,7 +604,7 @@ export default function GymHistoryChart() {
                     chartData,
                     (point) => point.valor,
                     chartScales.xScale,
-                    chartScales.yScale,
+                    chartScales.yScale
                   )}
                   fill="none"
                   stroke="#EF4444"
@@ -620,7 +615,7 @@ export default function GymHistoryChart() {
                     chartData,
                     (point) => point.instinct,
                     chartScales.xScale,
-                    chartScales.yScale,
+                    chartScales.yScale
                   )}
                   fill="none"
                   stroke="#F59E0B"
@@ -631,7 +626,7 @@ export default function GymHistoryChart() {
                     chartData,
                     (point) => point.uncontrolled,
                     chartScales.xScale,
-                    chartScales.yScale,
+                    chartScales.yScale
                   )}
                   fill="none"
                   stroke="#9CA3AF"
@@ -687,7 +682,7 @@ export default function GymHistoryChart() {
               style={{
                 left: `${Math.min(
                   Math.max(((hoverX ?? 0) / SVG_WIDTH) * 100, 10),
-                  90,
+                  90
                 )}%`,
                 top: "10px",
               }}
@@ -696,8 +691,12 @@ export default function GymHistoryChart() {
                 {formatTimeLabel(hoveredPoint.time, period)}
               </div>
               <div className="flex flex-wrap gap-3">
-                <span className="text-blue-300">Mystic: {hoveredPoint.mystic}</span>
-                <span className="text-red-300">Valor: {hoveredPoint.valor}</span>
+                <span className="text-blue-300">
+                  Mystic: {hoveredPoint.mystic}
+                </span>
+                <span className="text-red-300">
+                  Valor: {hoveredPoint.valor}
+                </span>
                 <span className="text-yellow-300">
                   Instinct: {hoveredPoint.instinct}
                 </span>
@@ -755,7 +754,8 @@ export default function GymHistoryChart() {
                           Current: {teamName(gym.current_team)}
                         </span>
                         <span>
-                          Last change: {new Date(gym.last_changed).toLocaleTimeString()}
+                          Last change:{" "}
+                          {new Date(gym.last_changed).toLocaleTimeString()}
                         </span>
                       </div>
                     </div>
@@ -765,13 +765,13 @@ export default function GymHistoryChart() {
                     {gym.recent_changes.slice(0, 5).map((change, index) => (
                       <div
                         key={`${gym.gym_id}-${index}`}
-                        className="flex items-center gap-3 text-gray-500"
+                        className="flex items-center gap-3 bg-gray-500/20 rounded-lg p-1 text-gray-500"
                       >
                         <TeamIconBadge teamId={change.from} />
                         <svg
                           className="w-4 h-4"
                           fill="none"
-                          stroke="currentColor"
+                          stroke="white"
                           viewBox="0 0 24 24"
                         >
                           <path
@@ -780,7 +780,7 @@ export default function GymHistoryChart() {
                             strokeWidth={2}
                             d="M9 5l7 7-7 7"
                           />
-                        </svg>
+                        </svg>{" "}
                         <TeamIconBadge teamId={change.to} />
                       </div>
                     ))}

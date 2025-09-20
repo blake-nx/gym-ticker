@@ -29,7 +29,10 @@ type HeatLayerOptions = {
 
 type LeafletMap = {
   remove: () => void;
-  fitBounds: (bounds: unknown, options?: { padding?: [number, number]; maxZoom?: number }) => void;
+  fitBounds: (
+    bounds: unknown,
+    options?: { padding?: [number, number]; maxZoom?: number }
+  ) => void;
   addLayer: (layer: unknown) => void;
   removeLayer: (layer: unknown) => void;
   on: (event: string, handler: () => void) => LeafletMap;
@@ -39,7 +42,11 @@ type LeafletMap = {
 type LeafletInstance = {
   map: (
     container: HTMLDivElement,
-    options: { zoomControl: boolean; attributionControl: boolean; preferCanvas: boolean }
+    options: {
+      zoomControl: boolean;
+      attributionControl: boolean;
+      preferCanvas: boolean;
+    }
   ) => LeafletMap;
   tileLayer: (
     url: string,
@@ -52,23 +59,23 @@ type LeafletInstance = {
 const TEAM_GRADIENTS: Record<TeamKey, Record<number, string>> = {
   valor: {
     0: "rgba(254, 226, 226, 0)",
-    0.3: "rgba(252, 165, 165, 0.45)",
-    0.5: "rgba(248, 113, 113, 0.65)",
-    0.7: "rgba(239, 68, 68, 0.85)",
+    // 0.3: "rgba(252, 165, 165, 0.45)",
+    // 0.5: "rgba(248, 113, 113, 0.65)",
+    // 0.7: "rgba(239, 68, 68, 0.85)",
     1: "rgba(185, 28, 28, 1)",
   },
   instinct: {
     0: "rgba(254, 249, 195, 0)",
-    0.3: "rgba(253, 224, 71, 0.45)",
-    0.5: "rgba(250, 204, 21, 0.65)",
-    0.7: "rgba(234, 179, 8, 0.85)",
+    // 0.3: "rgba(253, 224, 71, 0.45)",
+    // 0.5: "rgba(250, 204, 21, 0.65)",
+    // 0.7: "rgba(234, 179, 8, 0.85)",
     1: "rgba(202, 138, 4, 1)",
   },
   mystic: {
     0: "rgba(191, 219, 254, 0)",
-    0.3: "rgba(147, 197, 253, 0.45)",
-    0.5: "rgba(96, 165, 250, 0.65)",
-    0.7: "rgba(59, 130, 246, 0.85)",
+    // 0.3: "rgba(147, 197, 253, 0.45)",
+    // 0.5: "rgba(96, 165, 250, 0.65)",
+    // 0.7: "rgba(59, 130, 246, 0.85)",
     1: "rgba(37, 99, 235, 1)",
   },
 };
@@ -87,7 +94,8 @@ const TEAM_COLORS: Record<TeamKey, string> = {
 
 const LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-const LEAFLET_HEAT_JS = "https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js";
+const LEAFLET_HEAT_JS =
+  "https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js";
 
 let leafletPromise: Promise<LeafletInstance> | null = null;
 
@@ -114,14 +122,18 @@ function ensureLeaflet(): Promise<LeafletInstance> {
 
     const loadScript = (src: string) =>
       new Promise<void>((res, rej) => {
-        const existing = document.querySelector(`script[src='${src}']`) as HTMLScriptElement | null;
+        const existing = document.querySelector(
+          `script[src='${src}']`
+        ) as HTMLScriptElement | null;
         if (existing) {
           if (existing.dataset.loaded === "true") {
             res();
             return;
           }
           existing.addEventListener("load", () => res());
-          existing.addEventListener("error", () => rej(new Error(`Failed to load ${src}`)));
+          existing.addEventListener("error", () =>
+            rej(new Error(`Failed to load ${src}`))
+          );
           return;
         }
 
@@ -133,7 +145,9 @@ function ensureLeaflet(): Promise<LeafletInstance> {
           script.dataset.loaded = "true";
           res();
         });
-        script.addEventListener("error", () => rej(new Error(`Failed to load ${src}`)));
+        script.addEventListener("error", () =>
+          rej(new Error(`Failed to load ${src}`))
+        );
         document.body.appendChild(script);
       });
 
@@ -169,19 +183,26 @@ function computeIntensity(gym: Gym): number {
   const now = Math.floor(Date.now() / 1000);
   const secondsSinceUpdate = Math.max(0, now - gym.updated);
   const decayWindow = 6 * 60 * 60;
-  const recencyWeight = 1 - Math.min(secondsSinceUpdate, decayWindow) / decayWindow;
+  const recencyWeight =
+    1 - Math.min(secondsSinceUpdate, decayWindow) / decayWindow;
   const base = 0.3 + defenderWeight * 0.45 + recencyWeight * 0.25;
   return Math.max(0.2, Math.min(1, base));
 }
 
 function sanitizeGyms(gyms: Gym[]): Gym[] {
   return gyms.filter(
-    (gym) => Number.isFinite(gym.lat) && Number.isFinite(gym.lon) && Math.abs(gym.lat) <= 90 && Math.abs(gym.lon) <= 180
+    (gym) =>
+      Number.isFinite(gym.lat) &&
+      Number.isFinite(gym.lon) &&
+      Math.abs(gym.lat) <= 90 &&
+      Math.abs(gym.lon) <= 180
   );
 }
 
 function toHeatPoints(gyms: Gym[]): HeatPoint[] {
-  return sanitizeGyms(gyms).map((gym) => [gym.lat, gym.lon, computeIntensity(gym)] as HeatPoint);
+  return sanitizeGyms(gyms).map(
+    (gym) => [gym.lat, gym.lon, computeIntensity(gym)] as HeatPoint
+  );
 }
 
 type BoundsSummary = {
@@ -199,11 +220,20 @@ function summarizeBounds(points: Array<[number, number]>): BoundsSummary {
       minLon: Math.min(acc.minLon, lon),
       maxLon: Math.max(acc.maxLon, lon),
     }),
-    { minLat: Number.POSITIVE_INFINITY, maxLat: Number.NEGATIVE_INFINITY, minLon: Number.POSITIVE_INFINITY, maxLon: Number.NEGATIVE_INFINITY }
+    {
+      minLat: Number.POSITIVE_INFINITY,
+      maxLat: Number.NEGATIVE_INFINITY,
+      minLon: Number.POSITIVE_INFINITY,
+      maxLon: Number.NEGATIVE_INFINITY,
+    }
   );
 }
 
-function boundsAreSimilar(a: BoundsSummary, b: BoundsSummary, epsilon = 1e-5): boolean {
+function boundsAreSimilar(
+  a: BoundsSummary,
+  b: BoundsSummary,
+  epsilon = 1e-5
+): boolean {
   return (
     Math.abs(a.minLat - b.minLat) <= epsilon &&
     Math.abs(a.maxLat - b.maxLat) <= epsilon &&
@@ -277,11 +307,14 @@ export default function TeamOwnershipHeatmap({
           preferCanvas: true,
         });
         leaflet
-          .tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            maxZoom: 19,
-          })
+          .tileLayer(
+            "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+            {
+              attribution:
+                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+              maxZoom: 19,
+            }
+          )
           .addTo(map);
         hasInteractedRef.current = false;
         const handleInteraction = () => {
@@ -311,7 +344,9 @@ export default function TeamOwnershipHeatmap({
           boundsSummaryRef.current = null;
           return;
         }
-        const points = validGyms.map((gym) => [gym.lat, gym.lon] as [number, number]);
+        const points = validGyms.map(
+          (gym) => [gym.lat, gym.lon] as [number, number]
+        );
         const summary = summarizeBounds(points);
         const lastSummary = boundsSummaryRef.current;
         const changed = !lastSummary || !boundsAreSimilar(summary, lastSummary);
@@ -354,10 +389,10 @@ export default function TeamOwnershipHeatmap({
           }
 
           const options: HeatLayerOptions = {
-            radius: 30,
-            blur: 20,
+            radius: 15,
+            blur: 5,
             maxZoom: 18,
-            minOpacity: 0.25,
+            minOpacity: 0.45,
             gradient: TEAM_GRADIENTS[team],
           };
 
@@ -401,14 +436,20 @@ export default function TeamOwnershipHeatmap({
   }, []);
 
   const hasGyms = allGyms.some(
-    (gym) => Number.isFinite(gym.lat) && Number.isFinite(gym.lon) && Math.abs(gym.lat) <= 90 && Math.abs(gym.lon) <= 180
+    (gym) =>
+      Number.isFinite(gym.lat) &&
+      Number.isFinite(gym.lon) &&
+      Math.abs(gym.lat) <= 90 &&
+      Math.abs(gym.lon) <= 180
   );
 
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-2xl shadow-xl overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 bg-gray-900/70">
         <div>
-          <h2 className="text-lg font-semibold text-white">Team Ownership Heatmap</h2>
+          <h2 className="text-lg font-semibold text-white">
+            Team Ownership Heatmap
+          </h2>
           <p className="text-sm text-gray-400">
             Explore where each team currently holds gyms within the geofence.
           </p>
@@ -434,7 +475,10 @@ export default function TeamOwnershipHeatmap({
             <div className="font-semibold text-white">Team legend</div>
             {(Object.keys(TEAM_LABELS) as TeamKey[]).map((team) => (
               <div key={team} className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: TEAM_COLORS[team] }} />
+                <span
+                  className="w-3 h-3 rounded-sm"
+                  style={{ backgroundColor: TEAM_COLORS[team] }}
+                />
                 <span>{TEAM_LABELS[team]}</span>
               </div>
             ))}
