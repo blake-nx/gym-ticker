@@ -234,19 +234,35 @@ function buildChartData(rows: HistoryRow[]): ChartDataPoint[] {
   });
 }
 
+function normalizeTeamId(teamId: number | null | undefined): number | null {
+  if (teamId === null || teamId === undefined || teamId === 0) {
+    return null;
+  }
+
+  return teamId;
+}
+
 function mapRecentChanges(rows: ChangeRow[]): Map<string, ContestedGymChange[]> {
   const grouped = new Map<string, ContestedGymChange[]>();
 
   for (const row of rows) {
-    if (!grouped.has(row.gym_id)) {
-      grouped.set(row.gym_id, []);
+    const fromTeam = normalizeTeamId(row.old_team_id);
+    const toTeam = normalizeTeamId(row.new_team_id);
+
+    if (fromTeam === toTeam) {
+      continue;
     }
 
-    const list = grouped.get(row.gym_id)!;
+    let list = grouped.get(row.gym_id);
+    if (!list) {
+      list = [];
+      grouped.set(row.gym_id, list);
+    }
+
     if (list.length < 5) {
       list.push({
-        from: row.old_team_id ?? null,
-        to: row.new_team_id ?? null,
+        from: fromTeam,
+        to: toTeam,
         timestamp: row.changed_at * 1000,
       });
     }
