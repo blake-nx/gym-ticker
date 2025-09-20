@@ -1,4 +1,4 @@
-import GymTicker from "../components/GymTicker";
+import GymDashboard from "../components/GymDashboard";
 import GymHistoryChart from "../components/GymHistoryChart";
 import DefenderStats from "../components/DefenderStats";
 import { getGymsAction } from "./actions/getGyms";
@@ -16,7 +16,7 @@ export default async function Page() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <GymTicker initialGyms={initialGyms} getGymsAction={refreshGyms} />
+      <GymDashboard initialGyms={initialGyms} getGymsAction={refreshGyms} />
 
       <div className="max-w-7xl mx-auto px-4 mb-8">
         <GymHistoryChart />
