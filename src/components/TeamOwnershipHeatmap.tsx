@@ -51,25 +51,25 @@ type LeafletInstance = {
 
 const TEAM_GRADIENTS: Record<TeamKey, Record<number, string>> = {
   valor: {
-    0: "rgba(239, 68, 68, 0)",
-    0.2: "rgba(248, 113, 113, 0.2)",
-    0.4: "rgba(252, 165, 165, 0.38)",
-    0.7: "rgba(239, 68, 68, 0.75)",
-    1: "rgba(220, 38, 38, 1)",
+    0: "rgba(254, 226, 226, 0)",
+    0.3: "rgba(252, 165, 165, 0.45)",
+    0.5: "rgba(248, 113, 113, 0.65)",
+    0.7: "rgba(239, 68, 68, 0.85)",
+    1: "rgba(185, 28, 28, 1)",
   },
   instinct: {
-    0: "rgba(250, 204, 21, 0)",
-    0.2: "rgba(253, 224, 71, 0.2)",
-    0.4: "rgba(254, 240, 138, 0.38)",
-    0.7: "rgba(250, 204, 21, 0.75)",
-    1: "rgba(217, 119, 6, 1)",
+    0: "rgba(254, 249, 195, 0)",
+    0.3: "rgba(253, 224, 71, 0.45)",
+    0.5: "rgba(250, 204, 21, 0.65)",
+    0.7: "rgba(234, 179, 8, 0.85)",
+    1: "rgba(202, 138, 4, 1)",
   },
   mystic: {
-    0: "rgba(59, 130, 246, 0)",
-    0.2: "rgba(96, 165, 250, 0.2)",
-    0.4: "rgba(147, 197, 253, 0.38)",
-    0.7: "rgba(59, 130, 246, 0.75)",
-    1: "rgba(29, 78, 216, 1)",
+    0: "rgba(191, 219, 254, 0)",
+    0.3: "rgba(147, 197, 253, 0.45)",
+    0.5: "rgba(96, 165, 250, 0.65)",
+    0.7: "rgba(59, 130, 246, 0.85)",
+    1: "rgba(37, 99, 235, 1)",
   },
 };
 
@@ -168,10 +168,10 @@ function computeIntensity(gym: Gym): number {
   const defenderWeight = defenders / 6;
   const now = Math.floor(Date.now() / 1000);
   const secondsSinceUpdate = Math.max(0, now - gym.updated);
-  const decayWindow = 3 * 60 * 60;
+  const decayWindow = 6 * 60 * 60;
   const recencyWeight = 1 - Math.min(secondsSinceUpdate, decayWindow) / decayWindow;
-  const base = 0.55 + defenderWeight * 0.3 + recencyWeight * 0.15;
-  return Math.max(0.55, Math.min(1, base));
+  const base = 0.3 + defenderWeight * 0.45 + recencyWeight * 0.25;
+  return Math.max(0.2, Math.min(1, base));
 }
 
 function sanitizeGyms(gyms: Gym[]): Gym[] {
@@ -354,10 +354,10 @@ export default function TeamOwnershipHeatmap({
           }
 
           const options: HeatLayerOptions = {
-            radius: 24,
-            blur: 10,
+            radius: 30,
+            blur: 20,
             maxZoom: 18,
-            minOpacity: 0.35,
+            minOpacity: 0.25,
             gradient: TEAM_GRADIENTS[team],
           };
 
