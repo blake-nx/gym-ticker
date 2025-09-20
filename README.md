@@ -6,10 +6,10 @@ Gym Ticker is a Pogo gym control tracker. It combines a MySQL schema, a Node.js 
 ## Features
 
 
-- **Live ticker** – See which team currently owns each gym along with defender previews and slot availability.
-- **History charts** – Track long-term Mystic, Valor, and Instinct control across multiple time windows.
-- **Defender stats** – Review the Pokémon species, counts, and combined CP that appear most often in the fence.
-- **Contested gym list** – Surface gyms that flip teams the most so you can focus response efforts.
+- **Live ticker** - See how many gyms each team controls along with defender previews and slot availability.
+- **History charts** - Track long-term Mystic, Valor, and Instinct control across multiple time windows.
+- **Defender stats** - Reveal the most common gym defender species, counts, etc.
+- **Contested gym list** - Surface gyms that flip teams the most.
 
 ## Prerequisites
 
