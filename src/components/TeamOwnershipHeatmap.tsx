@@ -24,6 +24,7 @@ type HeatLayerOptions = {
   blur: number;
   maxZoom: number;
   gradient: Record<number, string>;
+  minOpacity?: number;
 };
 
 type LeafletMap = {
@@ -31,6 +32,8 @@ type LeafletMap = {
   fitBounds: (bounds: unknown, options?: { padding?: [number, number]; maxZoom?: number }) => void;
   addLayer: (layer: unknown) => void;
   removeLayer: (layer: unknown) => void;
+  on: (event: string, handler: () => void) => LeafletMap;
+  off: (event: string, handler: () => void) => LeafletMap;
 };
 
 type LeafletInstance = {
@@ -164,8 +167,8 @@ function computeIntensity(gym: Gym): number {
   const secondsSinceUpdate = Math.max(0, now - gym.updated);
   const decayWindow = 3 * 60 * 60;
   const recencyWeight = 1 - Math.min(secondsSinceUpdate, decayWindow) / decayWindow;
-  const base = 0.35 + defenderWeight * 0.45 + recencyWeight * 0.2;
-  return Math.max(0.3, Math.min(1, base));
+  const base = 0.55 + defenderWeight * 0.3 + recencyWeight * 0.15;
+  return Math.max(0.55, Math.min(1, base));
 }
 
 function sanitizeGyms(gyms: Gym[]): Gym[] {
@@ -176,6 +179,34 @@ function sanitizeGyms(gyms: Gym[]): Gym[] {
 
 function toHeatPoints(gyms: Gym[]): HeatPoint[] {
   return sanitizeGyms(gyms).map((gym) => [gym.lat, gym.lon, computeIntensity(gym)] as HeatPoint);
+}
+
+type BoundsSummary = {
+  minLat: number;
+  maxLat: number;
+  minLon: number;
+  maxLon: number;
+};
+
+function summarizeBounds(points: Array<[number, number]>): BoundsSummary {
+  return points.reduce<BoundsSummary>(
+    (acc, [lat, lon]) => ({
+      minLat: Math.min(acc.minLat, lat),
+      maxLat: Math.max(acc.maxLat, lat),
+      minLon: Math.min(acc.minLon, lon),
+      maxLon: Math.max(acc.maxLon, lon),
+    }),
+    { minLat: Number.POSITIVE_INFINITY, maxLat: Number.NEGATIVE_INFINITY, minLon: Number.POSITIVE_INFINITY, maxLon: Number.NEGATIVE_INFINITY }
+  );
+}
+
+function boundsAreSimilar(a: BoundsSummary, b: BoundsSummary, epsilon = 1e-5): boolean {
+  return (
+    Math.abs(a.minLat - b.minLat) <= epsilon &&
+    Math.abs(a.maxLat - b.maxLat) <= epsilon &&
+    Math.abs(a.minLon - b.minLon) <= epsilon &&
+    Math.abs(a.maxLon - b.maxLon) <= epsilon
+  );
 }
 
 export default function TeamOwnershipHeatmap({
@@ -190,6 +221,9 @@ export default function TeamOwnershipHeatmap({
     instinct: null,
     mystic: null,
   });
+  const hasInteractedRef = useRef(false);
+  const interactionHandlerRef = useRef<(() => void) | null>(null);
+  const boundsSummaryRef = useRef<BoundsSummary | null>(null);
   const [leafletReady, setLeafletReady] = useState(false);
 
   const allGyms = useMemo(
@@ -243,6 +277,14 @@ export default function TeamOwnershipHeatmap({
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           maxZoom: 18,
         }).addTo(map);
+        hasInteractedRef.current = false;
+        const handleInteraction = () => {
+          hasInteractedRef.current = true;
+        };
+        interactionHandlerRef.current = handleInteraction;
+        map.on("mousedown", handleInteraction);
+        map.on("touchstart", handleInteraction);
+        map.on("wheel", handleInteraction);
         mapRef.current = map;
       })
       .catch((error) => {
@@ -260,9 +302,24 @@ export default function TeamOwnershipHeatmap({
       .then((leaflet) => {
         const validGyms = sanitizeGyms(allGyms);
         if (validGyms.length === 0) {
+          boundsSummaryRef.current = null;
           return;
         }
-        const bounds = leaflet.latLngBounds(validGyms.map((gym) => [gym.lat, gym.lon] as [number, number]));
+        const points = validGyms.map((gym) => [gym.lat, gym.lon] as [number, number]);
+        const summary = summarizeBounds(points);
+        const lastSummary = boundsSummaryRef.current;
+        const changed = !lastSummary || !boundsAreSimilar(summary, lastSummary);
+        boundsSummaryRef.current = summary;
+
+        if (lastSummary && hasInteractedRef.current && changed) {
+          return;
+        }
+
+        if (!changed) {
+          return;
+        }
+
+        const bounds = leaflet.latLngBounds(points);
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
       })
       .catch((error) => {
@@ -291,9 +348,10 @@ export default function TeamOwnershipHeatmap({
           }
 
           const options: HeatLayerOptions = {
-            radius: 25,
-            blur: 18,
-            maxZoom: 16,
+            radius: 18,
+            blur: 12,
+            maxZoom: 18,
+            minOpacity: 0.45,
             gradient: TEAM_GRADIENTS[team],
           };
 
@@ -320,10 +378,19 @@ export default function TeamOwnershipHeatmap({
         layer?.remove();
       });
       if (storedMap) {
+        const handler = interactionHandlerRef.current;
+        if (handler) {
+          storedMap.off("mousedown", handler);
+          storedMap.off("touchstart", handler);
+          storedMap.off("wheel", handler);
+        }
         storedMap.remove();
       }
       layerRefs.current = { valor: null, instinct: null, mystic: null };
       mapRef.current = null;
+      interactionHandlerRef.current = null;
+      hasInteractedRef.current = false;
+      boundsSummaryRef.current = null;
     };
   }, []);
 
