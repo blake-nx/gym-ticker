@@ -160,7 +160,7 @@ function createAreaPath(
   return `${topPath} ${bottomPath} Z`;
 }
 
-function useChartScales(data: ChartDataPoint[], chartType: ChartType) {
+function useChartScales(data: ChartDataPoint[], totalGyms?: number) {
   return useMemo(() => {
     if (data.length === 0) {
       return {
@@ -177,15 +177,10 @@ function useChartScales(data: ChartDataPoint[], chartType: ChartType) {
     const maxTime = Math.max(...times);
     const timeRange = Math.max(maxTime - minTime, 1);
 
-    const maxLineValue = Math.max(
-      ...data.flatMap((point) => [point.mystic, point.valor, point.instinct]),
-      0,
-    );
     const maxTotalValue = Math.max(...data.map((point) => point.total), 0);
+    const desiredMaxValue = totalGyms && totalGyms > 0 ? totalGyms : maxTotalValue;
 
-    const maxValue = chartType === "area"
-      ? Math.max(maxTotalValue, 1)
-      : Math.max(maxLineValue, 1);
+    const maxValue = Math.max(desiredMaxValue, 1);
 
     const xScale = (time: number) =>
       PADDING.left + ((time - minTime) / timeRange) * CHART_WIDTH;
@@ -194,7 +189,7 @@ function useChartScales(data: ChartDataPoint[], chartType: ChartType) {
       PADDING.top + (1 - Math.min(value, maxValue) / maxValue) * CHART_HEIGHT;
 
     return { xScale, yScale, minTime, maxTime, maxValue };
-  }, [data, chartType]);
+  }, [data, totalGyms]);
 }
 
 export default function GymHistoryChart() {
@@ -239,7 +234,10 @@ export default function GymHistoryChart() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const chartScales = useChartScales(data?.chartData ?? [], chartType);
+  const chartScales = useChartScales(
+    data?.chartData ?? [],
+    data?.currentCounts.total,
+  );
 
   const yTicks = useMemo(() => {
     const ticks = 4;
