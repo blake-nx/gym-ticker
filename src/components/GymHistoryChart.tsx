@@ -14,6 +14,10 @@ type ChartDataPoint = {
   total: number;
 };
 
+type ChartDisplayPoint = ChartDataPoint & {
+  uncontrolled: number;
+};
+
 type ContestedGymChange = {
   from: number | null;
   to: number | null;
@@ -107,6 +111,33 @@ function getTeamClasses(teamId: number) {
   }
 }
 
+type TeamIconDefinition = {
+  src: string;
+  alt: string;
+};
+
+function getTeamIcon(teamId: number): TeamIconDefinition | null {
+  switch (teamId) {
+    case 1:
+      return {
+        src: "/images/mystic.png",
+        alt: "Team Mystic icon",
+      };
+    case 2:
+      return {
+        src: "/images/valor.png",
+        alt: "Team Valor icon",
+      };
+    case 3:
+      return {
+        src: "/images/instinct.png",
+        alt: "Team Instinct icon",
+      };
+    default:
+      return null;
+  }
+}
+
 function teamName(teamId: number) {
   switch (teamId) {
     case 1:
@@ -118,6 +149,42 @@ function teamName(teamId: number) {
     default:
       return "Neutral";
   }
+}
+
+function TeamIconBadge({
+  teamId,
+}: {
+  teamId?: number | null;
+}) {
+  const resolvedTeamId = teamId ?? 0;
+  const icon = getTeamIcon(resolvedTeamId);
+  const label = teamName(resolvedTeamId);
+
+  if (icon) {
+    return (
+      <div
+        className="w-6 h-6 rounded-full bg-gray-900/70 border border-gray-700 flex items-center justify-center"
+        title={label}
+      >
+        <Image
+          src={icon.src}
+          alt={icon.alt}
+          width={24}
+          height={24}
+          className="w-5 h-5 object-contain"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-6 h-6 rounded-full bg-gray-600/80 flex items-center justify-center text-[10px] font-semibold text-gray-200"
+      title={label}
+    >
+      {label.slice(0, 1)}
+    </div>
+  );
 }
 
 function createLinePath(
@@ -160,7 +227,7 @@ function createAreaPath(
   return `${topPath} ${bottomPath} Z`;
 }
 
-function useChartScales(data: ChartDataPoint[], chartType: ChartType) {
+function useChartScales(data: ChartDataPoint[], totalGyms?: number) {
   return useMemo(() => {
     if (data.length === 0) {
       return {
@@ -177,15 +244,10 @@ function useChartScales(data: ChartDataPoint[], chartType: ChartType) {
     const maxTime = Math.max(...times);
     const timeRange = Math.max(maxTime - minTime, 1);
 
-    const maxLineValue = Math.max(
-      ...data.flatMap((point) => [point.mystic, point.valor, point.instinct]),
-      0,
-    );
     const maxTotalValue = Math.max(...data.map((point) => point.total), 0);
+    const desiredMaxValue = totalGyms && totalGyms > 0 ? totalGyms : maxTotalValue;
 
-    const maxValue = chartType === "area"
-      ? Math.max(maxTotalValue, 1)
-      : Math.max(maxLineValue, 1);
+    const maxValue = Math.max(desiredMaxValue, 1);
 
     const xScale = (time: number) =>
       PADDING.left + ((time - minTime) / timeRange) * CHART_WIDTH;
@@ -194,7 +256,7 @@ function useChartScales(data: ChartDataPoint[], chartType: ChartType) {
       PADDING.top + (1 - Math.min(value, maxValue) / maxValue) * CHART_HEIGHT;
 
     return { xScale, yScale, minTime, maxTime, maxValue };
-  }, [data, chartType]);
+  }, [data, totalGyms]);
 }
 
 export default function GymHistoryChart() {
@@ -239,7 +301,23 @@ export default function GymHistoryChart() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  const chartScales = useChartScales(data?.chartData ?? [], chartType);
+  const chartData = useMemo<ChartDisplayPoint[]>(() => {
+    if (!data) {
+      return [];
+    }
+
+    return data.chartData.map((point) => {
+      const uncontrolled = Math.max(
+        point.total - point.mystic - point.valor - point.instinct,
+        0,
+      );
+
+      return { ...point, uncontrolled };
+    });
+  }, [data]);
+
+  const chartScales = useChartScales(chartData, data?.currentCounts.total);
+
 
   const yTicks = useMemo(() => {
     const ticks = 4;
@@ -251,18 +329,18 @@ export default function GymHistoryChart() {
   }, [chartScales.maxValue]);
 
   const xTicks = useMemo(() => {
-    if (!data || data.chartData.length === 0) return [] as number[];
-    const ticks = Math.min(5, data.chartData.length);
+    if (chartData.length === 0) return [] as number[];
+    const ticks = Math.min(5, chartData.length);
     const { minTime, maxTime } = chartScales;
     const range = Math.max(maxTime - minTime, 1);
     return Array.from({ length: ticks }, (_, index) =>
       minTime + (range * index) / Math.max(ticks - 1, 1),
     );
-  }, [chartScales, data]);
+  }, [chartData, chartScales]);
 
   const handleMouseMove = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!containerRef.current || !data || data.chartData.length === 0) {
+      if (!containerRef.current || chartData.length === 0) {
         return;
       }
 
@@ -279,7 +357,7 @@ export default function GymHistoryChart() {
 
       let closestIndex = 0;
       let bestDistance = Number.POSITIVE_INFINITY;
-      data.chartData.forEach((point, index) => {
+      chartData.forEach((point, index) => {
         const distance = Math.abs(point.time - targetTime);
         if (distance < bestDistance) {
           bestDistance = distance;
@@ -289,7 +367,7 @@ export default function GymHistoryChart() {
 
       setHoverIndex(closestIndex);
     },
-    [chartScales, data],
+    [chartData, chartScales],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -316,11 +394,26 @@ export default function GymHistoryChart() {
   }
 
   const hoveredPoint =
-    hoverIndex !== null ? data.chartData[hoverIndex] : undefined;
+    hoverIndex !== null ? chartData[hoverIndex] : undefined;
   const hoverX =
     hoveredPoint !== undefined
       ? chartScales.xScale(hoveredPoint.time)
       : null;
+
+  const currentUncontrolled = Math.max(
+    data.currentCounts.total -
+      data.currentCounts.mystic -
+      data.currentCounts.valor -
+      data.currentCounts.instinct,
+    0,
+  );
+
+  const summaryCards = [
+    { label: "Mystic", value: data.currentCounts.mystic, team: 1 },
+    { label: "Valor", value: data.currentCounts.valor, team: 2 },
+    { label: "Instinct", value: data.currentCounts.instinct, team: 3 },
+    { label: "Uncontrolled", value: currentUncontrolled, team: 0 },
+  ];
 
   return (
     <div className="space-y-6">
@@ -370,12 +463,8 @@ export default function GymHistoryChart() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          {([
-            { label: "Mystic", value: data.currentCounts.mystic, team: 1 },
-            { label: "Valor", value: data.currentCounts.valor, team: 2 },
-            { label: "Instinct", value: data.currentCounts.instinct, team: 3 },
-          ] as const).map((item) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {summaryCards.map((item) => {
             const teamClasses = getTeamClasses(item.team);
             return (
               <div
@@ -454,7 +543,7 @@ export default function GymHistoryChart() {
               <>
                 <path
                   d={createAreaPath(
-                    data.chartData,
+                    chartData,
                     () => 0,
                     (point) => point.mystic,
                     chartScales.xScale,
@@ -465,7 +554,7 @@ export default function GymHistoryChart() {
                 />
                 <path
                   d={createAreaPath(
-                    data.chartData,
+                    chartData,
                     (point) => point.mystic,
                     (point) => point.mystic + point.valor,
                     chartScales.xScale,
@@ -476,13 +565,29 @@ export default function GymHistoryChart() {
                 />
                 <path
                   d={createAreaPath(
-                    data.chartData,
+                    chartData,
                     (point) => point.mystic + point.valor,
-                    (point) => point.total,
+                    (point) => point.mystic + point.valor + point.instinct,
                     chartScales.xScale,
                     chartScales.yScale,
                   )}
                   fill="rgba(245, 158, 11, 0.45)"
+                  stroke="none"
+                />
+                <path
+                  d={createAreaPath(
+                    chartData,
+                    (point) =>
+                      point.mystic + point.valor + point.instinct,
+                    (point) =>
+                      point.mystic +
+                      point.valor +
+                      point.instinct +
+                      point.uncontrolled,
+                    chartScales.xScale,
+                    chartScales.yScale,
+                  )}
+                  fill="rgba(156, 163, 175, 0.45)"
                   stroke="none"
                 />
               </>
@@ -490,7 +595,7 @@ export default function GymHistoryChart() {
               <>
                 <path
                   d={createLinePath(
-                    data.chartData,
+                    chartData,
                     (point) => point.mystic,
                     chartScales.xScale,
                     chartScales.yScale,
@@ -501,7 +606,7 @@ export default function GymHistoryChart() {
                 />
                 <path
                   d={createLinePath(
-                    data.chartData,
+                    chartData,
                     (point) => point.valor,
                     chartScales.xScale,
                     chartScales.yScale,
@@ -512,13 +617,24 @@ export default function GymHistoryChart() {
                 />
                 <path
                   d={createLinePath(
-                    data.chartData,
+                    chartData,
                     (point) => point.instinct,
                     chartScales.xScale,
                     chartScales.yScale,
                   )}
                   fill="none"
                   stroke="#F59E0B"
+                  strokeWidth={2}
+                />
+                <path
+                  d={createLinePath(
+                    chartData,
+                    (point) => point.uncontrolled,
+                    chartScales.xScale,
+                    chartScales.yScale,
+                  )}
+                  fill="none"
+                  stroke="#9CA3AF"
                   strokeWidth={2}
                 />
               </>
@@ -555,6 +671,12 @@ export default function GymHistoryChart() {
                   r={4}
                   fill="#F59E0B"
                 />
+                <circle
+                  cx={chartScales.xScale(hoveredPoint.time)}
+                  cy={chartScales.yScale(hoveredPoint.uncontrolled)}
+                  r={4}
+                  fill="#9CA3AF"
+                />
               </>
             )}
           </svg>
@@ -573,11 +695,14 @@ export default function GymHistoryChart() {
               <div className="font-semibold mb-1">
                 {formatTimeLabel(hoveredPoint.time, period)}
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <span className="text-blue-300">Mystic: {hoveredPoint.mystic}</span>
                 <span className="text-red-300">Valor: {hoveredPoint.valor}</span>
                 <span className="text-yellow-300">
                   Instinct: {hoveredPoint.instinct}
+                </span>
+                <span className="text-gray-300">
+                  Uncontrolled: {hoveredPoint.uncontrolled}
                 </span>
               </div>
               <div className="text-gray-400 mt-1">
@@ -636,16 +761,15 @@ export default function GymHistoryChart() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 overflow-x-auto">
+                  <div className="flex items-center gap-3 overflow-x-auto">
                     {gym.recent_changes.slice(0, 5).map((change, index) => (
-                      <div key={`${gym.gym_id}-${index}`} className="flex items-center">
-                        <div
-                          className={`w-6 h-6 rounded-full ${
-                            getTeamClasses(change.from ?? 0).circle
-                          }`}
-                        />
+                      <div
+                        key={`${gym.gym_id}-${index}`}
+                        className="flex items-center gap-3 text-gray-500"
+                      >
+                        <TeamIconBadge teamId={change.from} />
                         <svg
-                          className="w-4 h-4 text-gray-500"
+                          className="w-4 h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -657,11 +781,7 @@ export default function GymHistoryChart() {
                             d="M9 5l7 7-7 7"
                           />
                         </svg>
-                        <div
-                          className={`w-6 h-6 rounded-full ${
-                            getTeamClasses(change.to ?? 0).circle
-                          }`}
-                        />
+                        <TeamIconBadge teamId={change.to} />
                       </div>
                     ))}
                   </div>

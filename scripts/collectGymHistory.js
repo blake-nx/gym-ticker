@@ -193,7 +193,6 @@ async function collectGymHistory() {
           COUNT(*) AS total
         FROM ${dbName}.gym
         WHERE enabled = 1
-          AND team_id IN (1, 2, 3)
           AND ST_CONTAINS(
             ST_GeomFromGeoJSON(
               (SELECT geometry FROM ${geofenceDbName}.geofence WHERE id = ?), 2, 0
