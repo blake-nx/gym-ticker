@@ -111,6 +111,33 @@ function getTeamClasses(teamId: number) {
   }
 }
 
+type TeamIconDefinition = {
+  src: string;
+  alt: string;
+};
+
+function getTeamIcon(teamId: number): TeamIconDefinition | null {
+  switch (teamId) {
+    case 1:
+      return {
+        src: "/images/mystic.png",
+        alt: "Team Mystic icon",
+      };
+    case 2:
+      return {
+        src: "/images/valor.png",
+        alt: "Team Valor icon",
+      };
+    case 3:
+      return {
+        src: "/images/instinct.png",
+        alt: "Team Instinct icon",
+      };
+    default:
+      return null;
+  }
+}
+
 function teamName(teamId: number) {
   switch (teamId) {
     case 1:
@@ -122,6 +149,42 @@ function teamName(teamId: number) {
     default:
       return "Neutral";
   }
+}
+
+function TeamIconBadge({
+  teamId,
+}: {
+  teamId?: number | null;
+}) {
+  const resolvedTeamId = teamId ?? 0;
+  const icon = getTeamIcon(resolvedTeamId);
+  const label = teamName(resolvedTeamId);
+
+  if (icon) {
+    return (
+      <div
+        className="w-6 h-6 rounded-full bg-gray-900/70 border border-gray-700 flex items-center justify-center"
+        title={label}
+      >
+        <Image
+          src={icon.src}
+          alt={icon.alt}
+          width={24}
+          height={24}
+          className="w-5 h-5 object-contain"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-6 h-6 rounded-full bg-gray-600/80 flex items-center justify-center text-[10px] font-semibold text-gray-200"
+      title={label}
+    >
+      {label.slice(0, 1)}
+    </div>
+  );
 }
 
 function createLinePath(
@@ -698,16 +761,15 @@ export default function GymHistoryChart() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 overflow-x-auto">
+                  <div className="flex items-center gap-3 overflow-x-auto">
                     {gym.recent_changes.slice(0, 5).map((change, index) => (
-                      <div key={`${gym.gym_id}-${index}`} className="flex items-center">
-                        <div
-                          className={`w-6 h-6 rounded-full ${
-                            getTeamClasses(change.from ?? 0).circle
-                          }`}
-                        />
+                      <div
+                        key={`${gym.gym_id}-${index}`}
+                        className="flex items-center gap-3 text-gray-500"
+                      >
+                        <TeamIconBadge teamId={change.from} />
                         <svg
-                          className="w-4 h-4 text-gray-500"
+                          className="w-4 h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -719,11 +781,7 @@ export default function GymHistoryChart() {
                             d="M9 5l7 7-7 7"
                           />
                         </svg>
-                        <div
-                          className={`w-6 h-6 rounded-full ${
-                            getTeamClasses(change.to ?? 0).circle
-                          }`}
-                        />
+                        <TeamIconBadge teamId={change.to} />
                       </div>
                     ))}
                   </div>
