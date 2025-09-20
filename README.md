@@ -24,7 +24,7 @@ Create `.env` for the Next.js app based on `env.example`. At minimum you must pr
 
 | Variable                                                                   | Description                                                                                             |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`                      | Connection details for the database that contains the RocketMap/Monocle `gym` table.                    |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`                      | Connection details for the database that contains the golbat `gym` table.                    |
 | `GEOFENCE_DB_NAME`, `GEOFENCE_ID`                                          | Point the collector and dashboard to the geofence polygon that bounds the gyms you care about.          |
 | `NEXT_PUBLIC_APP_URL`                                                      | Public base URL used for server-side fetches in production. Keep `http://localhost:3000` for local dev. |
 | `NEXT_PUBLIC_MAP_URL` (optional)                                           | Adds "View map" links that hand off to your live scanner map.                                           |
@@ -39,7 +39,7 @@ Create `.env` for the Next.js app based on `env.example`. At minimum you must pr
    npm install
    ```
 2. Copy `env.example` to `.env`, then fill in the variables listed above.
-3. Create the history tables inside your RocketMap/Monocle database:
+3. Create the history tables inside your golbat database:
    ```bash
    mysql -h $DB_HOST -u $DB_USER -p$DB_PASS $DB_NAME < scripts/gym_history_schema.sql
    ```
