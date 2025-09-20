@@ -34,8 +34,8 @@ Create `.env` for the Next.js app based on `env.example`. At minimum you must pr
 
 1. Clone the repository and install dependencies:
    ```bash
-   git clone https://github.com/your-org/gymticker.git
-   cd gymticker
+   git clone https://github.com/blake-nx/gym-ticker.git
+   cd gym-ticker
    npm install
    ```
 2. Copy `env.example` to `.env`, then fill in the variables listed above.
