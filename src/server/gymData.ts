@@ -216,13 +216,22 @@ function getTimeSinceUpdate(unixTimestamp: number): string {
 }
 
 function buildChartData(rows: HistoryRow[]): ChartDataPoint[] {
-  return rows.map((row) => ({
-    time: row.bucket * 1000,
-    mystic: Math.round(row.mystic ?? 0),
-    valor: Math.round(row.valor ?? 0),
-    instinct: Math.round(row.instinct ?? 0),
-    total: Math.round(row.total ?? 0),
-  }));
+  return rows.map((row) => {
+    const mystic = Math.round(row.mystic ?? 0);
+    const valor = Math.round(row.valor ?? 0);
+    const instinct = Math.round(row.instinct ?? 0);
+    const recordedTotal = Math.round(row.total ?? 0);
+    const controlledSum = mystic + valor + instinct;
+    const total = Math.max(recordedTotal, controlledSum);
+
+    return {
+      time: row.bucket * 1000,
+      mystic,
+      valor,
+      instinct,
+      total,
+    };
+  });
 }
 
 function mapRecentChanges(rows: ChangeRow[]): Map<string, ContestedGymChange[]> {
@@ -422,16 +431,20 @@ export async function fetchGymHistory(period: string): Promise<GymHistoryRespons
     }>)[0];
 
     const currentCounts = latest
-      ? {
-          mystic: latest.team_mystic ?? 0,
-          valor: latest.team_valor ?? 0,
-          instinct: latest.team_instinct ?? 0,
-          total:
-            latest.total_gyms ??
-            (latest.team_mystic ?? 0) +
-              (latest.team_valor ?? 0) +
-              (latest.team_instinct ?? 0),
-        }
+      ? (() => {
+          const mystic = Math.round(latest.team_mystic ?? 0);
+          const valor = Math.round(latest.team_valor ?? 0);
+          const instinct = Math.round(latest.team_instinct ?? 0);
+          const recordedTotal = Math.round(latest.total_gyms ?? 0);
+          const controlledSum = mystic + valor + instinct;
+
+          return {
+            mystic,
+            valor,
+            instinct,
+            total: Math.max(recordedTotal, controlledSum),
+          };
+        })()
       : { mystic: 0, valor: 0, instinct: 0, total: 0 };
 
     const lastUpdated = latest
