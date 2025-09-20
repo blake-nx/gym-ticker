@@ -51,22 +51,25 @@ type LeafletInstance = {
 
 const TEAM_GRADIENTS: Record<TeamKey, Record<number, string>> = {
   valor: {
-    0.3: "#fca5a5",
-    0.6: "#f87171",
-    0.8: "#ef4444",
-    1: "#991b1b",
+    0: "rgba(239, 68, 68, 0)",
+    0.2: "rgba(248, 113, 113, 0.2)",
+    0.4: "rgba(252, 165, 165, 0.38)",
+    0.7: "rgba(239, 68, 68, 0.75)",
+    1: "rgba(220, 38, 38, 1)",
   },
   instinct: {
-    0.3: "#fcd34d",
-    0.6: "#facc15",
-    0.8: "#fbbf24",
-    1: "#b45309",
+    0: "rgba(250, 204, 21, 0)",
+    0.2: "rgba(253, 224, 71, 0.2)",
+    0.4: "rgba(254, 240, 138, 0.38)",
+    0.7: "rgba(250, 204, 21, 0.75)",
+    1: "rgba(217, 119, 6, 1)",
   },
   mystic: {
-    0.3: "#bfdbfe",
-    0.6: "#60a5fa",
-    0.8: "#3b82f6",
-    1: "#1d4ed8",
+    0: "rgba(59, 130, 246, 0)",
+    0.2: "rgba(96, 165, 250, 0.2)",
+    0.4: "rgba(147, 197, 253, 0.38)",
+    0.7: "rgba(59, 130, 246, 0.75)",
+    1: "rgba(29, 78, 216, 1)",
   },
 };
 
@@ -273,10 +276,13 @@ export default function TeamOwnershipHeatmap({
           attributionControl: true,
           preferCanvas: true,
         });
-        leaflet.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          maxZoom: 18,
-        }).addTo(map);
+        leaflet
+          .tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 19,
+          })
+          .addTo(map);
         hasInteractedRef.current = false;
         const handleInteraction = () => {
           hasInteractedRef.current = true;
@@ -348,10 +354,10 @@ export default function TeamOwnershipHeatmap({
           }
 
           const options: HeatLayerOptions = {
-            radius: 18,
-            blur: 12,
+            radius: 24,
+            blur: 10,
             maxZoom: 18,
-            minOpacity: 0.45,
+            minOpacity: 0.35,
             gradient: TEAM_GRADIENTS[team],
           };
 
