@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useTransition, useCallback } from "react";
+import { useCallback } from "react";
 import Image from "next/image";
 import { TickerCount } from "./TickerCount";
 import {
@@ -9,20 +9,19 @@ import {
 import type { Gym, GymApiResult } from "@/server/gymData";
 import { resolveGymImage } from "@/utils/gymImages";
 
-interface GymDashboardProps {
-  initialGyms: GymApiResult;
-  getGymsAction: () => Promise<GymApiResult>;
+interface GymTickerProps {
+  gyms: GymApiResult;
+  isPending: boolean;
+  updateError: boolean;
+  isClient: boolean;
 }
 
 export default function GymTicker({
-  initialGyms,
-  getGymsAction,
-}: GymDashboardProps) {
-  const [gyms, setGyms] = useState<GymApiResult>(initialGyms);
-  const [isPending, startTransition] = useTransition();
-  const [mounted, setMounted] = useState(false);
-  const [updateError, setUpdateError] = useState(false);
-
+  gyms,
+  isPending,
+  updateError,
+  isClient,
+}: GymTickerProps) {
   // Calculate favorite defender for each team
   const getFavoriteDefender = useCallback((teamGyms: Gym[]) => {
     const defenderCounts = new Map<
@@ -73,7 +72,7 @@ export default function GymTicker({
   // Calculate time ago for display
   const getTimeAgo = useCallback(
     (timestamp: number) => {
-      if (!mounted) return "...";
+      if (!isClient) return "...";
 
       const now = Math.floor(Date.now() / 1000);
       const diff = now - timestamp;
@@ -83,32 +82,8 @@ export default function GymTicker({
       if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
       return `${Math.floor(diff / 86400)}d ago`;
     },
-    [mounted]
+    [isClient]
   );
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-
-    // Update gyms every 5 seconds using server action
-    const interval = setInterval(() => {
-      startTransition(async () => {
-        try {
-          const newGyms = await getGymsAction();
-          setGyms(newGyms);
-          setUpdateError(false);
-        } catch (error) {
-          console.error("Failed to update gyms:", error);
-          setUpdateError(true);
-        }
-      });
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [getGymsAction, mounted]);
 
   const renderGyms = (teamGyms: Gym[], color: string) => (
     <div className="w-full mt-4 flex flex-col gap-3 max-h-[50vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
@@ -239,7 +214,7 @@ export default function GymTicker({
             Updating...
           </div>
         )}
-        {updateError && mounted && (
+        {updateError && isClient && (
           <div className="bg-red-600 text-white px-3 py-1 rounded-full text-sm">
             Update failed
           </div>
